@@ -3,6 +3,7 @@ import os
 import requests
 import concurrent.futures
 import urllib3
+import json
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -12,7 +13,6 @@ USERNAME_HEADER = "partnerapikey"
 COOKIE_HEADER = "JSESSIONID=13F0590A81AC7CF9D3AEB727348DC099"
 OUTPUT_CSV_FILE = "output.csv"
 BATCH_SIZE = 10
-
 
 def send_request(pan):
     payload = {
@@ -36,12 +36,10 @@ def send_request(pan):
         print(e)
         return "failure", ""
 
-
 def process_batch(batch):
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        results = executor.map(send_request, batch)
-    return list(results)
-
+        results = list(executor.map(send_request, batch))
+    return results
 
 def main(csv_file_path):
     with open(csv_file_path, 'r') as file:
@@ -56,15 +54,14 @@ def main(csv_file_path):
                     batch.append(pan)
                     if len(batch) == BATCH_SIZE:
                         results = process_batch(batch)
-                        for pan, status, response_text in zip(batch, *zip(*results)):
+                        for pan, (status, response_text) in zip(batch, results):
                             writer.writerow([pan, status, response_text])
                         batch = []
             if batch:
                 results = process_batch(batch)
-                for pan, status, response_text in zip(batch, *zip(*results)):
+                for pan, (status, response_text) in zip(batch, results):
                     writer.writerow([pan, status, response_text])
     print("Output CSV file has been created successfully.")
-
 
 if __name__ == "__main__":
     csv_file_path = "/Users/harshavardhan/Downloads/UNI dedupe analysis.csv"
